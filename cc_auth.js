@@ -93,9 +93,10 @@ async function init() {
     document.getElementById('arqCompleto').classList.remove('hidden');
   }
 
-  // Mostrar botón de proveedores solo para supervisores+
+  // Mostrar botones de supervisor+
   if (isSup()) {
     document.getElementById('btnProveedores').style.display = 'block';
+    document.getElementById('btnDashboard').style.display   = 'block';
   }
 
   // Activar campos de shopping si el local los requiere
