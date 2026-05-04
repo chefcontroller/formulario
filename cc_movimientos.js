@@ -93,7 +93,7 @@ function syncEfectivo() {
 // ── Compras en efectivo + alerta ─────────────────────────
 function calcComprasEft() {
   const total = window.movs
-    .filter(m => m.tipo === 'compra' && m.medio_pago === 'efectivo')
+    .filter(m => ['compra','egreso'].includes(m.tipo) && m.medio_pago === 'efectivo')
     .reduce((acc, m) => acc + (m.monto || 0), 0);
   const input = document.getElementById('comprasEft');
   if (input) input.value = total > 0 ? fmt(Math.round(total)) : '';
