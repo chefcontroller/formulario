@@ -22,7 +22,7 @@ const n = id => parseFloat(document.getElementById(id)?.value || 0) || 0;
 
 // ── Verificar si el usuario actual tiene permisos de supervisor ──
 // userRol es una variable global definida en cc_auth.js
-const isSup = () => ['supervisor', 'dueno', 'admin'].includes(window.userRol || '');
+const isSup = () => ['supervisor', 'owner', 'admin'].includes(window.userRol || '');
 
 // ── Íconos SVG (evita inconsistencias entre sistemas operativos) ──
 const SVG_SOL = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none">
