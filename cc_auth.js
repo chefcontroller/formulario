@@ -87,16 +87,15 @@ async function init() {
 
   // Configurar arqueo según rol:
   // cajero → arqueo ciego (solo ve efectivo real)
-  // supervisor/dueno/admin → arqueo completo con desglose
+  // supervisor/owner/admin → arqueo completo con desglose
   if (isSup()) {
     document.getElementById('arqCiego').classList.add('hidden');
     document.getElementById('arqCompleto').classList.remove('hidden');
   }
 
-  // Mostrar botones de supervisor+
+  // Mostrar botón de proveedores solo para supervisores+
   if (isSup()) {
     document.getElementById('btnProveedores').style.display = 'block';
-    document.getElementById('btnDashboard').style.display   = 'block';
   }
 
   // Activar campos de shopping si el local los requiere
