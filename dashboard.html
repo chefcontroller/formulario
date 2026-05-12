@@ -1125,6 +1125,7 @@ let execMesYear=new Date().getFullYear(),execMesMonth=new Date().getMonth();
 const LC_EXEC=['#2F6FED','#059669','#D97706','#7C3AED','#DC2626','#0891B2'];
 
 function showExecView(){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
   document.getElementById('sDash').style.display='none';
   document.getElementById('sExecView').style.display='block';
   document.getElementById('sbExecBtn2').classList.add('active');
