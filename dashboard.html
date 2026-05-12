@@ -1135,6 +1135,7 @@ function showExecView(){
 function showOperView(){
   document.getElementById('sExecView').style.display='none';
   document.getElementById('sDash').style.display='';
+  document.getElementById('sDash').classList.add('active');
   document.getElementById('sbExecBtn2').classList.remove('active');
   document.getElementById('sbOperBtn2').classList.add('active');
   loadDash();
