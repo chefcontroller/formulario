@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
+<title>ChefController</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+
+<!-- Supabase SDK -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<!-- ── MÓDULOS CHEFCONTROLLER ─────────────────────────────
+     Orden importante: config → utils → auth → resto
+     Cambiar BASE_URL por la URL real de GitHub Pages      -->
+<script>
+  const BASE_URL = 'https://chefcontroller.github.io/formulario';
+</script>
+<script id="mod-config"></script>
+<script id="mod-utils"></script>
+<script id="mod-auth"></script>
+<script id="mod-proveedores"></script>
+<script id="mod-movimientos"></script>
+<script id="mod-turnos"></script>
+<script id="mod-arqueo"></script>
+<script id="mod-alivios"></script>
+<script id="mod-mes"></script>
+<script>
+  // Cargar módulos dinámicamente para respetar el orden
+  (async () => {
+    const mods = [
+      ['mod-config',      'cc_config.js'],
+      ['mod-utils',       'cc_utils.js'],
+      ['mod-auth',        'cc_auth.js'],
+      ['mod-proveedores', 'cc_proveedores.js'],
+      ['mod-movimientos', 'cc_movimientos.js'],
+      ['mod-turnos',      'cc_turnos.js'],
+      ['mod-arqueo',      'cc_arqueo.js'],
+      ['mod-alivios',     'cc_alivios.js'],
+      ['mod-mes',         'cc_mes.js'],
+    ];
+    for (const [id, file] of mods) {
+      const res  = await fetch(`${BASE_URL}/${file}?v=${Date.now()}`);
+      const code = await res.text();
+      const el   = document.getElementById(id);
+      el.textContent = code;
+    }
+  })();
+</script>
+
+<style>
+:root{
+  --p:#2F6FED;--pd:#1E3A8A;--pl:#60A5FA;--pb:#EBF3FF;
+  --bg:#F5F6F8;--s:#FFFFFF;--b:#E8EAED;--b2:#D1D5DB;
+  --t:#111827;--t2:#6B7280;--t3:#9CA3AF;
+  --ok:#2E9E6F;--ok-bg:#ECFDF5;
+  --err:#E5484D;--err-bg:#FFF1F2;
+  --r:12px;--rs:8px;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--t);min-height:100vh;font-size:14px}
+.screen{display:none;min-height:100vh;flex-direction:column}
+.screen.active{display:flex}
+.hdr{background:var(--p);padding:12px 20px;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:10}
+.hdr-name{font-size:15px;font-weight:700;color:#fff;letter-spacing:-.3px;flex:1}
+.hdr-name span{opacity:.75}
+.hdr-pill{font-size:11px;background:rgba(255,255,255,.2);color:#fff;padding:3px 10px;border-radius:20px}
+.hdr-back{font-size:13px;color:rgba(255,255,255,.85);cursor:pointer;background:none;border:none;font-family:'Inter',sans-serif}
+.hdr-center{flex:1;text-align:center;font-size:14px;font-weight:500;color:#fff}
+.btn-logout{background:none;border:none;color:rgba(255,255,255,.7);font-size:12px;cursor:pointer;font-family:'Inter',sans-serif;margin-left:auto}
+.body{flex:1;padding:20px;max-width:560px;margin:0 auto;width:100%}
+.ptitle{font-size:20px;font-weight:700;letter-spacing:-.3px;margin-bottom:3px}
+.psub{font-size:13px;color:var(--t2);margin-bottom:18px;display:flex;align-items:center;gap:6px}
+
+/* LOGIN */
+.login-wrap{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px}
+.logo-area{text-align:center;margin-bottom:28px}
+.logo-cc{width:56px;height:56px;background:var(--p);border-radius:14px;display:flex;align-items:center;justify-content:center;margin:0 auto 12px;font-size:20px;font-weight:700;color:#fff;letter-spacing:-.5px}
+.logo-name{font-size:22px;font-weight:700;letter-spacing:-.5px}
+.logo-name span{color:var(--p)}
+.logo-tag{font-size:13px;color:var(--t2);margin-top:4px}
+.login-card{background:var(--s);border:1px solid var(--b);border-radius:var(--r);padding:28px;width:100%;max-width:360px;box-shadow:0 4px 12px rgba(0,0,0,.06)}
+.login-title{font-size:16px;font-weight:600;margin-bottom:18px}
+.field{margin-bottom:14px}
+.field label{display:block;font-size:12px;font-weight:500;color:var(--t2);margin-bottom:5px}
+.field input{width:100%;padding:10px 12px;background:var(--bg);border:1.5px solid var(--b);border-radius:var(--rs);color:var(--t);font-size:14px;font-family:'Inter',sans-serif;outline:none;transition:border-color .15s}
+.field input:focus{border-color:var(--p);background:#fff}
+.btn-p{width:100%;padding:12px;background:var(--p);color:#fff;border:none;border-radius:var(--rs);font-size:14px;font-weight:600;font-family:'Inter',sans-serif;cursor:pointer}
+.btn-p:hover{background:var(--pd)}
+.btn-p:disabled{opacity:.5;cursor:not-allowed}
+.err-msg{font-size:12px;color:var(--err);margin-top:8px;text-align:center;padding:8px;background:var(--err-bg);border-radius:var(--rs)}
+
+/* BADGES */
+.role-badge{display:inline-flex;align-items:center;font-size:11px;font-weight:500;padding:2px 8px;border-radius:20px}
+.rb-cajero{background:#FEF3C7;color:#92400E}
+.rb-supervisor{background:#EDE9FE;color:#5B21B6}
+.rb-dueno{background:var(--ok-bg);color:var(--ok)}
+.rb-admin{background:var(--pb);color:var(--pd)}
+
+/* TURNO CARDS */
+.tcard{background:var(--s);border:1.5px solid var(--b);border-radius:var(--r);padding:16px 18px;display:flex;align-items:center;gap:14px;margin-bottom:10px;cursor:pointer;transition:all .15s}
+.tcard:hover{border-color:var(--p);box-shadow:0 4px 12px rgba(0,0,0,.06)}
+.tcard.closed{opacity:.7;cursor:pointer}
+.tcard.closed:hover{border-color:var(--b2);box-shadow:0 2px 8px rgba(0,0,0,.05)}
+.ti{width:42px;height:42px;border-radius:var(--rs);display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0}
+.ti1{background:#FFF3CD}.ti2{background:#E8EDF2}
+.tinfo{flex:1}
+.tname{font-size:14px;font-weight:600}
+.tmeta{font-size:12px;color:var(--t2);margin-top:2px}
+.tbadge{font-size:11px;font-weight:500;padding:3px 8px;border-radius:20px;flex-shrink:0}
+.tb-open{background:var(--ok-bg);color:var(--ok)}
+.tb-closed{background:var(--bg);color:var(--t3)}
+.btn-new{width:100%;padding:12px;background:none;border:1.5px dashed var(--b2);border-radius:var(--r);color:var(--t2);font-size:13px;font-family:'Inter',sans-serif;cursor:pointer;transition:all .15s;margin-bottom:8px}
+.btn-new:hover{border-color:var(--p);color:var(--p)}
+.btn-sec{width:100%;padding:11px;background:var(--s);color:var(--t2);border:1.5px solid var(--b);border-radius:var(--rs);font-size:13px;font-family:'Inter',sans-serif;cursor:pointer}
+
+/* DASHBOARD TURNO */
+.banner{background:var(--p);border-radius:var(--r);padding:16px;margin-bottom:14px;color:#fff}
+.banner-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px}
+.banner-name{font-size:15px;font-weight:600}
+.banner-status{font-size:11px;background:rgba(255,255,255,.2);padding:2px 8px;border-radius:20px}
+.banner-sub{font-size:12px;opacity:.8}
+.sec-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;margin-top:14px}
+.sec-title{font-size:13px;font-weight:600}
+.btn-add{padding:6px 14px;background:var(--pb);color:var(--p);border:none;border-radius:20px;font-size:12px;font-weight:500;cursor:pointer;font-family:'Inter',sans-serif}
+.mov-empty{border:1.5px dashed var(--b2);border-radius:var(--r);padding:20px;text-align:center;font-size:13px;color:var(--t3)}
+.mov-item{display:flex;align-items:center;gap:10px;background:var(--s);border:1px solid var(--b);border-radius:var(--rs);padding:10px 12px;margin-bottom:6px}
+.mb{font-size:10px;font-weight:600;padding:2px 7px;border-radius:20px;flex-shrink:0;text-transform:uppercase;letter-spacing:.3px}
+.mb-compra{background:#FEF3C7;color:#92400E}
+.mb-egreso{background:var(--err-bg);color:var(--err)}
+.mb-reingreso{background:var(--ok-bg);color:var(--ok)}
+.mb-retiro{background:var(--pb);color:var(--pd)}
+.mb-alivio{background:#FFF3CD;color:#92400E;border:1px solid #F59E0B}
+.mb-nota_credito_proveedor,.mb-nota_credito_cliente{background:var(--bg);color:var(--t2)}
+.btn-alivio{width:100%;padding:11px;background:#FFFBEB;border:1.5px solid #F59E0B;border-radius:var(--rs);color:#92400E;font-size:13px;font-weight:600;font-family:'Inter',sans-serif;cursor:pointer;margin-top:8px;display:flex;align-items:center;justify-content:center;gap:6px}
+.mc{flex:1;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mm{font-size:13px;font-weight:500;flex-shrink:0}
+.mov-del{background:none;border:none;color:var(--t3);cursor:pointer;font-size:16px;padding:0 4px;line-height:1}
+.btn-cerrar{width:100%;padding:13px;background:var(--p);color:#fff;border:none;border-radius:var(--rs);font-size:14px;font-weight:600;font-family:'Inter',sans-serif;cursor:pointer;margin-top:10px}
+.btn-volver{width:100%;padding:11px;background:var(--s);color:var(--t2);border:1.5px solid var(--b);border-radius:var(--rs);font-size:13px;font-family:'Inter',sans-serif;cursor:pointer;margin-top:8px}
+
+/* CIERRE */
+.card{background:var(--s);border:1px solid var(--b);border-radius:var(--r);overflow:hidden;margin-bottom:12px}
+.ch{padding:10px 16px;border-bottom:1px solid var(--b);display:flex;align-items:center;gap:8px;background:var(--bg)}
+.ch-icon{font-size:14px}
+.ch-title{font-size:12px;font-weight:600;color:var(--t)}
+.cb{padding:14px 16px}
+.fr{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.fd{margin-bottom:10px}
+.fd:last-child{margin-bottom:0}
+.fd label{display:block;font-size:11px;font-weight:500;color:var(--t2);margin-bottom:4px;text-transform:uppercase;letter-spacing:.4px}
+.fd input,.fd select{width:100%;padding:9px 11px;background:var(--bg);border:1.5px solid var(--b);border-radius:var(--rs);color:var(--t);font-size:14px;font-family:'Inter',sans-serif;outline:none;transition:border-color .15s;-webkit-appearance:none}
+.fd input:focus,.fd select:focus{border-color:var(--p)}
+.fd input[type=number]{font-variant-numeric:tabular-nums}
+.subsection{font-size:11px;font-weight:600;color:var(--t2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;margin-top:4px;padding-bottom:4px;border-bottom:1px solid var(--b)}
+
+/* ARQUEO */
+.arq-ciego{background:var(--pb);border-radius:var(--rs);padding:14px;text-align:center;margin-top:4px}
+.arq-ciego-label{font-size:12px;color:var(--pd);margin-bottom:6px;font-weight:500}
+.arq-ciego-input{background:#fff;border:1.5px solid var(--pl);border-radius:var(--rs);padding:10px;font-size:18px;font-weight:600;color:var(--pd);text-align:center;width:100%;font-family:'Inter',sans-serif;outline:none}
+.arq-box{background:var(--bg);border-radius:var(--rs);padding:12px;margin-top:4px}
+.ar{display:flex;justify-content:space-between;font-size:13px;padding:3px 0}
+.al{color:var(--t2)}.av{font-weight:500;font-variant-numeric:tabular-nums}
+.adiv{height:1px;background:var(--b);margin:6px 0}
+.at .al,.at .av{font-weight:700;font-size:14px}
+.amatch{margin-top:8px;padding:7px;border-radius:var(--rs);font-size:12px;font-weight:500;text-align:center}
+.amatch.ok{background:var(--ok-bg);color:var(--ok)}
+.amatch.warn{background:var(--err-bg);color:var(--err)}
+.supervisor-badge{background:#EDE9FE;border-radius:var(--rs);padding:8px 12px;font-size:11px;color:#5B21B6;font-weight:500;margin-bottom:10px;text-align:center}
+
+/* MODAL */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;padding:20px;z-index:100;opacity:0;pointer-events:none;transition:opacity .2s}
+.modal-bg.open{opacity:1;pointer-events:all}
+.modal{background:var(--s);border-radius:var(--r);padding:24px 20px;width:100%;max-width:480px;max-height:90vh;overflow-y:auto;transform:translateY(20px);transition:transform .25s cubic-bezier(.4,0,.2,1)}
+.modal-bg.open .modal{transform:translateY(0)}
+.modal-title{font-size:16px;font-weight:700;margin-bottom:14px}
+.modal-acts{display:flex;gap:8px;margin-top:14px}
+.btn-mc{flex:1;padding:12px;background:var(--bg);border:none;border-radius:var(--rs);color:var(--t2);font-size:14px;font-family:'Inter',sans-serif;cursor:pointer}
+.btn-mok{flex:2;padding:12px;background:var(--p);border:none;border-radius:var(--rs);color:#fff;font-size:14px;font-weight:600;font-family:'Inter',sans-serif;cursor:pointer}
+
+/* MES */
+.mes-nav{display:flex;gap:8px;margin-bottom:14px}
+.mes-btn{flex:1;padding:9px;background:var(--s);border:1px solid var(--b);border-radius:var(--rs);font-size:13px;font-family:'Inter',sans-serif;cursor:pointer;color:var(--t2)}
+.mes-kpis{display:grid;grid-template-columns:1fr 1fr 1fr;grid-template-rows:auto auto;gap:8px;margin-bottom:14px}
+.mes-kpi{background:var(--s);border:1px solid var(--b);border-radius:var(--rs);padding:10px;text-align:center}
+.mes-kpi-val{font-size:14px;font-weight:600;color:var(--p);font-variant-numeric:tabular-nums}
+.mes-kpi-label{font-size:10px;color:var(--t2);margin-top:2px}
+.mes-table-wrap{background:var(--s);border:1px solid var(--b);border-radius:var(--r);overflow:hidden}
+.mes-table-head{padding:12px 16px;border-bottom:1px solid var(--b);font-size:13px;font-weight:600}
+table{width:100%;border-collapse:collapse;font-size:12px}
+thead th{padding:8px 10px;text-align:left;font-weight:500;color:var(--t2);border-bottom:1px solid var(--b);background:var(--bg);white-space:nowrap}
+tbody td{padding:8px 10px;border-bottom:1px solid var(--b);color:var(--t)}
+tbody tr:last-child td{border-bottom:none}
+.tdok{color:var(--ok);font-weight:500}
+.tdwarn{color:var(--err);font-weight:500}
+.btn-cargar-arq{font-size:10px;font-weight:600;color:var(--p);background:var(--pb);border:1px solid var(--pl);border-radius:20px;padding:2px 8px;cursor:pointer;white-space:nowrap;font-family:Inter,sans-serif;user-select:none}
+
+/* SUCCESS */
+.success-wrap{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 24px;text-align:center}
+.s-icon{width:64px;height:64px;background:var(--ok-bg);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;font-size:28px}
+.s-title{font-size:22px;font-weight:700;margin-bottom:6px}
+.s-sub{font-size:14px;color:var(--t2);margin-bottom:20px}
+.s-card{background:var(--s);border:1px solid var(--b);border-radius:var(--r);padding:18px;width:100%;max-width:360px;text-align:left;margin-bottom:20px}
+.hidden{display:none!important}
+</style>
+</head>
+<body>
+
+<!-- ── LOGIN ─────────────────────────────────────────────── -->
+<div class="screen active" id="sLogin">
+  <div class="login-wrap">
+    <div class="logo-area">
+      <div class="logo-cc">CC</div>
+      <div class="logo-name">Chef<span>Controller</span></div>
+      <div class="logo-tag">Control real del negocio gastronómico.</div>
+    </div>
+    <div class="login-card">
+      <div class="login-title">Ingresar al sistema</div>
+      <div class="field"><label>Email</label><input type="email" id="lEmail" placeholder="tu@email.com" autocomplete="email"/></div>
+      <div class="field"><label>Contraseña</label><input type="password" id="lPass" placeholder="••••••••" onkeydown="if(event.key==='Enter')login()"/></div>
+      <button class="btn-p" id="btnLogin" onclick="login()">Ingresar</button>
+      <div class="err-msg hidden" id="lErr"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ── SELECTOR TURNO ─────────────────────────────────────── -->
+<div class="screen" id="sTurnos">
+  <div class="hdr">
+    <div class="hdr-name">Chef<span>Controller</span></div>
+    <div class="hdr-pill" id="hLocal">—</div>
+    <button class="btn-logout" onclick="logout()">Salir</button>
+  </div>
+  <div class="body">
+    <div class="ptitle" id="tGreeting">Buenos días</div>
+    <div class="psub" id="tFecha"></div>
+    <div id="turnoGrid"></div>
+    <button class="btn-new" onclick="crearTurno()">+ Abrir nuevo turno</button>
+    <button class="btn-sec" style="margin-top:8px" onclick="loadMes();show('sMes')">📅 Ver mes completo</button>
+    <button class="btn-sec" id="btnProveedores" style="display:none;margin-top:8px" onclick="loadProveedoresList();show('sProveedores')">🏢 Proveedores</button>
+
+  </div>
+</div>
+
+<!-- ── DASHBOARD TURNO ────────────────────────────────────── -->
+<div class="screen" id="sDash">
+  <div class="hdr">
+    <button class="hdr-back btn-logout" onclick="show('sTurnos')">← Turnos</button>
+    <div class="hdr-pill" id="dLocal">—</div>
+    <button class="btn-logout" onclick="logout()">Salir</button>
+  </div>
+  <div class="body">
+    <div class="banner" id="tBanner"></div>
+    <div class="sec-head">
+      <div class="sec-title">Movimientos de caja</div>
+      <button class="btn-add" onclick="openModal()">+ Agregar</button>
+    </div>
+    <div id="movList"></div>
+    <button class="btn-alivio" id="btnAlivio" onclick="openModalAlivio()">📦 Generar alivio de caja</button>
+    <button class="btn-cerrar" id="btnCerrarDash" onclick="calcComprasEft();show('sCierre');calcArq()">Cerrar turno →</button>
+    <button class="btn-volver" onclick="show('sTurnos')">Volver sin cerrar</button>
+    <div style="height:24px"></div>
+  </div>
+</div>
+
+<!-- ── CIERRE ─────────────────────────────────────────────── -->
+<div class="screen" id="sCierre">
+  <div class="hdr">
+    <button class="hdr-back btn-logout" onclick="show('sDash')">← Volver</button>
+    <div class="hdr-center">Cierre de turno</div>
+    <div style="width:50px"></div>
+  </div>
+  <div class="body">
+    <div class="card">
+      <div class="ch"><span class="ch-icon">💰</span><span class="ch-title">Venta del turno</span></div>
+      <div class="cb">
+        <div class="fd"><label>Venta total</label><div style="position:relative"><span style="position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--t2);font-size:14px;pointer-events:none">$</span><input type="number" id="totalTicket" placeholder="0" style="padding-left:22px" oninput="calcArq()"/></div></div>
+        <div class="fr">
+          <div class="fd"><label>Cubiertos</label><input type="number" id="cubiertos" placeholder="0" oninput="calcArq()"/></div>
+          <div class="fd"><label>Ticket promedio</label><input type="text" id="ticketProm" placeholder="Auto" style="color:var(--t3)" readonly/></div>
+        </div>
+        <div class="fr shopping-only hidden">
+          <div class="fd"><label>1er ticket</label><input type="number" id="primerTicket" placeholder="Nro."/></div>
+          <div class="fd"><label>Último ticket</label><input type="number" id="ultimoTicket" placeholder="Nro."/></div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="ch"><span class="ch-icon">🧾</span><span class="ch-title">Facturación</span></div>
+      <div class="cb">
+        <div class="fr">
+          <div class="fd"><label>FC A</label><div style="position:relative"><span style="position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--t2);font-size:14px;pointer-events:none">$</span><input type="number" id="totalFCA" placeholder="0" style="padding-left:22px" oninput="calcArq()"/></div></div>
+          <div class="fd"><label>FC B</label><div style="position:relative"><span style="position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--t2);font-size:14px;pointer-events:none">$</span><input type="number" id="totalFCB" placeholder="0" style="padding-left:22px" oninput="calcArq()"/></div></div>
+        </div>
+        <div class="fr">
+          <div class="fd"><label>Fact. manual</label><div style="position:relative"><span style="position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--t2);font-size:14px;pointer-events:none">$</span><input type="number" id="factManual" placeholder="0" style="padding-left:22px" oninput="calcArq()"/></div></div>
+          <div class="fd"><label>NC clientes</label><div style="position:relative"><span style="position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--t2);font-size:14px;pointer-events:none">$</span><input type="number" id="totalNC" placeholder="0" style="padding-left:22px" oninput="calcArq()"/></div></div>
+        </div>
+        <div class="fd"><label>Descuentos</label><div style="position:relative"><span style="position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--t2);font-size:14px;pointer-events:none">$</span><input type="number" id="descuentos" placeholder="0" style="padding-left:22px" oninput="calcArq()"/></div></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="ch"><span class="ch-icon">💳</span><span class="ch-title">Medios de pago</span></div>
+      <div class="cb">
+        <div class="subsection">Tarjetas</div>
+        <div class="fr">
+          <div class="fd"><label>Visa</label><div style="position:relative"><span style="position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--t2);font-size:14px;pointer-events:none">$</span><input type="number" id="visa" placeholder="0" style="padding-left:22px" oninput="calcArq()"/></div></div>
+          <div class="fd"><label>Mastercard</label><div style="position:relative"><span style="position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--t2);font-size:14px;pointer-events:none">$</span><input type="number" id="master" placeholder="0" style="padding-left:22px" oninput="calcArq()"/></div></div>
+        </div>
+        <div class="fr">
+          <div class="fd"><label>Amex</label><div style="position:relative"><span style="position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--t2);font-size:14px;pointer-events:none">$</span><input type="number" id="amex" placeholder="0" style="padding-left:22px" oninput="calcArq()"/></div></div>
+          <div class="fd"><label>Visa Electron</label><div style="position:relative"><span style="position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--t2);font-size:14px;pointer-events:none">$</span><input type="number" id="electron" placeholder="0" style="padding-left:22px" oninput="calcArq()"/></div></div>
+        </div>
+        <div class="fr">
+          <div class="fd"><label>Maestro</label><div style="position:relative"><span style="position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--t2);font-size:14px;pointer-events:none">$</span><input type="number" id="maestro" placeholder="0" style="padding-left:22px" oninput="calcArq()"/></div></div>
+          <div class="fd"><label>Cabal</label><div style="position:relative"><span style="position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--t2);font-size:14px;pointer-events:none">$</span><input type="number" id="cabal" placeholder="0" style="padding-left:22px" oninput="calcArq()"/></div></div>
+        </div>
+        <div class="fr">
+          <div class="fd"><label>Gift Card</label><div style="position:relative"><span style="position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--t2);font-size:14px;pointer-events:none">$</span><input type="number" id="giftcard" placeholder="0" style="padding-left:22px" oninput="calcArq()"/></div></div>
+          <div class="fd"><label>Otras</label><div style="position:relative"><span style="position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--t2);font-size:14px;pointer-events:none">$</span><input type="number" id="otras" placeholder="0" style="padding-left:22px" oninput="calcArq()"/></div></div>
+        </div>
+        <div class="fd"><label>Cta. Cte. clientes</label><div style="position:relative"><span style="position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--t2);font-size:14px;pointer-events:none">$</span><input type="number" id="ctacte" placeholder="0" style="padding-left:22px" oninput="calcArq()"/></div></div>
+        <div class="subsection" style="margin-top:8px">Mercado Pago</div>
+        <div class="fd"><div style="position:relative"><span style="position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--t2);font-size:14px;pointer-events:none">$</span><input type="number" id="mpago" placeholder="0" style="padding-left:22px" oninput="calcArq()"/></div></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="ch"><span class="ch-icon">🛵</span><span class="ch-title">Delivery</span></div>
+      <div class="cb">
+        <div class="subsection">PedidosYa</div>
+        <div class="fr">
+          <div class="fd"><label>Tarjeta</label><div style="position:relative"><span style="position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--t2);font-size:14px;pointer-events:none">$</span><input type="number" id="pya_tar" placeholder="0" style="padding-left:22px" oninput="calcArq()"/></div></div>
+          <div class="fd"><label>Efectivo</label><div style="position:relative"><span style="position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--t2);font-size:14px;pointer-events:none">$</span><input type="number" id="pya_ef" placeholder="0" style="padding-left:22px" oninput="calcArq()"/></div></div>
+        </div>
+        <div class="fd"><label>Órdenes</label><input type="number" id="pya_ord" placeholder="0"/></div>
+        <div class="subsection">Rappi</div>
+        <div class="fr">
+          <div class="fd"><label>Tarjeta</label><div style="position:relative"><span style="position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--t2);font-size:14px;pointer-events:none">$</span><input type="number" id="rappi_tar" placeholder="0" style="padding-left:22px" oninput="calcArq()"/></div></div>
+          <div class="fd"><label>Efectivo</label><div style="position:relative"><span style="position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--t2);font-size:14px;pointer-events:none">$</span><input type="number" id="rappi_ef" placeholder="0" style="padding-left:22px" oninput="calcArq()"/></div></div>
+        </div>
+        <div class="fd"><label>Órdenes</label><input type="number" id="rappi_ord" placeholder="0"/></div>
+        <div class="subsection">MP Delivery</div>
+        <div class="fr">
+          <div class="fd"><label>Tarjeta</label><div style="position:relative"><span style="position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--t2);font-size:14px;pointer-events:none">$</span><input type="number" id="mpd_tar" placeholder="0" style="padding-left:22px" oninput="calcArq()"/></div></div>
+          <div class="fd"><label>Efectivo</label><div style="position:relative"><span style="position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--t2);font-size:14px;pointer-events:none">$</span><input type="number" id="mpd_ef" placeholder="0" style="padding-left:22px" oninput="calcArq()"/></div></div>
+        </div>
+        <div class="fd"><label>Órdenes</label><input type="number" id="mpd_ord" placeholder="0"/></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="ch"><span class="ch-icon">🔒</span><span class="ch-title">Arqueo de caja</span></div>
+      <div class="cb">
+        <div id="arqCiego">
+          <div style="font-size:13px;color:var(--t2);margin-bottom:10px">Contá el efectivo que tenés en caja y escribilo acá.</div>
+          <div class="arq-ciego">
+            <div class="arq-ciego-label">Efectivo real en caja</div>
+            <input class="arq-ciego-input" type="number" id="efectivoReal" placeholder="$0" oninput="calcArq()"/>
+          </div>
+        </div>
+        <div id="arqCompleto" class="hidden">
+          <div class="supervisor-badge">Vista supervisor — arqueo completo</div>
+          <div class="arq-ciego" style="margin-bottom:10px">
+            <div class="arq-ciego-label">Efectivo real en caja</div>
+            <input class="arq-ciego-input" type="number" id="efectivoRealSup" placeholder="$0" oninput="syncEfectivo();calcArq()"/>
+          </div>
+          <div class="arq-box" id="arqBox"></div>
+        </div>
+        <div class="fd" style="margin-top:12px"><label>Compras en efectivo del turno</label><input type="text" id="comprasEft" placeholder="$0" readonly style="color:var(--t2);background:var(--bg)"/></div>
+        <div class="fd"><label>Propinas</label><div style="position:relative"><span style="position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--t2);font-size:14px;pointer-events:none">$</span><input type="number" id="propinas" placeholder="0" style="padding-left:22px"/></div></div>
+        <div class="fd"><label>Observaciones</label><input type="text" id="obs" placeholder="Opcional..."/></div>
+      </div>
+    </div>
+    <div id="comprasWarn" class="hidden" style="background:#FEF3C7;border:1.5px solid #F59E0B;border-radius:var(--rs);padding:12px 14px;margin-bottom:10px">
+      <div style="font-size:13px;font-weight:600;color:#92400E;margin-bottom:4px">⚠️ No hay compras registradas</div>
+      <div style="font-size:12px;color:#92400E;margin-bottom:10px">Si hiciste compras en efectivo, cargalas antes de cerrar.</div>
+      <button onclick="irACargarCompras()" style="width:100%;padding:9px;background:#F59E0B;border:none;border-radius:var(--rs);color:#fff;font-size:13px;font-weight:600;font-family:Inter,sans-serif;cursor:pointer">+ Cargar compras</button>
+    </div>
+    <button class="btn-cerrar" onclick="submitCierre()" id="btnCerrar">Confirmar cierre</button>
+    <button class="btn-volver" onclick="show('sDash')">Volver</button>
+    <div style="height:32px"></div>
+  </div>
+</div>
+
+<!-- ── MES COMPLETO ───────────────────────────────────────── -->
+<div class="screen" id="sMes">
+  <div class="hdr">
+    <button class="hdr-back btn-logout" onclick="show('sTurnos')">← Volver</button>
+    <div class="hdr-center" id="mesTitulo"></div>
+    <div style="width:50px"></div>
+  </div>
+  <div class="body">
+    <div class="mes-nav">
+      <button class="mes-btn" onclick="cambiarMes(-1)">← Anterior</button>
+      <button class="mes-btn" onclick="cambiarMes(1)">Siguiente →</button>
+    </div>
+    <div class="mes-kpis hidden" id="mesKpis"></div>
+    <div class="mes-table-wrap">
+      <div class="mes-table-head">Asientos del mes</div>
+      <div style="overflow-x:auto">
+        <table>
+          <thead><tr><th>Fecha</th><th>T</th><th>Venta</th><th>Compras</th><th>Efect.</th><th>Arq.</th></tr></thead>
+          <tbody id="mesTbody"></tbody>
+        </table>
+      </div>
+    </div>
+    <div style="height:24px"></div>
+  </div>
+</div>
+
+<!-- ── SUCCESS ────────────────────────────────────────────── -->
+<div class="screen" id="sSuccess">
+  <div class="hdr">
+    <div class="hdr-name">Chef<span>Controller</span></div>
+    <button class="btn-logout" onclick="logout()">Salir</button>
+  </div>
+  <div class="success-wrap">
+    <div class="s-icon">✅</div>
+    <div class="s-title">Turno cerrado</div>
+    <div class="s-sub">Los datos fueron registrados correctamente</div>
+    <div class="s-card" id="sCard"></div>
+    <button class="btn-p" style="max-width:360px;width:100%" onclick="show('sTurnos');loadTurnos()">Ver turnos del día</button>
+    <button class="btn-volver" style="max-width:360px;width:100%;margin-top:8px" onclick="volverAMovimientos()">+ Cargar movimientos del turno</button>
+  </div>
+</div>
+
+<!-- ── PROVEEDORES ────────────────────────────────────────── -->
+<div class="screen" id="sProveedores">
+  <div class="hdr">
+    <button class="hdr-back btn-logout" onclick="show('sTurnos')">← Volver</button>
+    <div class="hdr-center">Proveedores</div>
+    <div style="width:50px"></div>
+  </div>
+  <div class="body">
+    <div style="display:flex;gap:8px;margin-bottom:14px">
+      <input type="text" id="provSearch" placeholder="Buscar proveedor..." oninput="filterProvList()" style="flex:1;padding:9px 12px;border:1.5px solid var(--b);border-radius:var(--rs);font-family:Inter,sans-serif;font-size:14px;outline:none;background:var(--bg)"/>
+      <button class="btn-p" style="width:auto;padding:9px 16px;white-space:nowrap" onclick="show('sNuevoProv')">+ Nuevo</button>
+    </div>
+    <div style="display:flex;gap:6px;margin-bottom:8px">
+      <button onclick="filterProvFood('todos')" id="fbt-todos" style="flex:1;padding:7px;border:1.5px solid var(--p);border-radius:20px;background:var(--p);color:#fff;font-size:12px;font-weight:500;font-family:Inter,sans-serif;cursor:pointer">Todos</button>
+      <button onclick="filterProvFood('food')" id="fbt-food" style="flex:1;padding:7px;border:1.5px solid var(--b);border-radius:20px;background:var(--s);color:var(--t2);font-size:12px;font-weight:500;font-family:Inter,sans-serif;cursor:pointer">Foodcost</button>
+      <button onclick="filterProvFood('nofood')" id="fbt-nofood" style="flex:1;padding:7px;border:1.5px solid var(--b);border-radius:20px;background:var(--s);color:var(--t2);font-size:12px;font-weight:500;font-family:Inter,sans-serif;cursor:pointer">Indirectos</button>
+    </div>
+    <div id="rubroChips" style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:12px"></div>
+    <div id="provList"></div>
+    <div style="height:24px"></div>
+  </div>
+</div>
+
+<!-- ── NUEVO / EDITAR PROVEEDOR ──────────────────────────── -->
+<div class="screen" id="sNuevoProv">
+  <div class="hdr">
+    <button class="hdr-back btn-logout" onclick="show('sProveedores')">← Volver</button>
+    <div class="hdr-center" id="nuevProvTitle">Nuevo proveedor</div>
+    <div style="width:50px"></div>
+  </div>
+  <div class="body">
+    <input type="hidden" id="editProvId"/>
+    <div class="card">
+      <div class="ch"><span class="ch-icon">🏢</span><span class="ch-title">Datos del proveedor</span></div>
+      <div class="cb">
+        <div class="fd"><label>Nombre *</label><input type="text" id="npNombre" placeholder="Ej: La Serenísima"/></div>
+        <div class="fd"><label>CUIT</label><input type="text" id="npCuit" placeholder="20-12345678-9"/></div>
+        <div class="fr">
+          <div class="fd"><label>Rubro</label>
+            <select id="npRubro">
+              <option value="">Sin rubro</option>
+              <option>almacen</option><option>sin alcohol</option><option>con alcohol</option>
+              <option>lacteos</option><option>pescados</option><option>panes</option>
+              <option>fyv</option><option>hielo</option><option>descartables</option>
+              <option>limpieza</option><option>servicios</option><option>mantenimiento</option>
+              <option>publicidad</option><option>rrhh</option><option>vajilla</option>
+              <option>librería</option><option>uniformes</option><option>viáticos</option>
+              <option>alquiler</option><option>expensas</option><option>seguros</option>
+              <option>apps</option><option>bancos</option>
+            </select>
+          </div>
+          <div class="fd"><label>Tipo</label>
+            <select id="npTipo">
+              <option value="directo">Directo</option>
+              <option value="indirecto">Indirecto</option>
+              <option value="rrhh">RRHH</option>
+              <option value="extra">Extra</option>
+            </select>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="ch"><span class="ch-icon">💳</span><span class="ch-title">Condiciones comerciales</span></div>
+      <div class="cb">
+        <div class="fr">
+          <div class="fd"><label>IVA</label>
+            <select id="npIva">
+              <option value="1.21">21%</option>
+              <option value="1.105">10.5%</option>
+              <option value="1">Monotributista</option>
+              <option value="0">Sin IVA</option>
+            </select>
+          </div>
+          <div class="fd"><label>Forma de pago</label>
+            <select id="npPago">
+              <option value="efectivo">Efectivo</option>
+              <option value="cuenta_corriente">Cta. Corriente</option>
+              <option value="mercado_pago">Mercado Pago</option>
+              <option value="otro">Otro</option>
+            </select>
+          </div>
+        </div>
+        <div class="fr">
+          <div class="fd"><label>Afecta foodcost</label>
+            <select id="npFood"><option value="true">Sí</option><option value="false">No</option></select>
+          </div>
+          <div class="fd"><label>Estado</label>
+            <select id="npActivo"><option value="true">Activo</option><option value="false">Inactivo</option></select>
+          </div>
+        </div>
+      </div>
+    </div>
+    <button class="btn-cerrar" onclick="guardarProveedor()">Guardar proveedor</button>
+    <button class="btn-volver" onclick="show('sProveedores')">Cancelar</button>
+    <div style="height:32px"></div>
+  </div>
+</div>
+
+<!-- ── MODALES ────────────────────────────────────────────── -->
+
+<!-- Modal movimiento -->
+<div class="modal-bg" id="modalBg">
+  <div class="modal">
+    <div class="modal-title">Agregar movimiento</div>
+    <div class="fd"><label>Tipo</label>
+      <select id="mTipo" onchange="tipoMovChanged()">
+        <option value="compra">Compra / Proveedor</option>
+        <option value="egreso">Egreso</option>
+        <option value="reingreso">Reingreso</option>
+        <option value="retiro">Retiro</option>
+        <option value="nota_credito_proveedor">N/C Proveedor</option>
+        <option value="nota_credito_cliente">N/C Cliente</option>
+      </select>
+    </div>
+    <div class="fd" id="fdProveedor" style="display:none">
+      <label>Proveedor</label>
+      <select id="mProveedor" onchange="seleccionarProveedor()">
+        <option value="">Seleccioná un proveedor...</option>
+      </select>
+    </div>
+    <div class="fd" id="fdConcepto">
+      <label>Concepto</label>
+      <input type="text" id="mConcepto" placeholder="Ej: La Serenísima, Retiro dueño..."/>
+    </div>
+    <div class="fr">
+      <div class="fd"><label>Monto</label><div style="position:relative"><span style="position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--t2);font-size:14px">$</span><input type="number" id="mMonto" placeholder="0" style="padding-left:22px" oninput="calcIVA()"/></div></div>
+      <div class="fd"><label>Forma de pago</label>
+        <select id="mPago">
+          <option value="efectivo">Efectivo</option>
+          <option value="cuenta_corriente">Cta. Cte.</option>
+          <option value="mercado_pago">Mercado Pago</option>
+          <option value="otro">Otro</option>
+        </select>
+      </div>
+    </div>
+    <div class="fr" id="fdIVA" style="display:none">
+      <div class="fd"><label>Neto</label><div style="position:relative"><span style="position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--t2);font-size:14px">$</span><input type="number" id="mNeto" placeholder="0" style="padding-left:22px"/></div></div>
+      <div class="fd"><label>IVA</label><div style="position:relative"><span style="position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--t2);font-size:14px">$</span><input type="number" id="mIva" placeholder="0" style="padding-left:22px"/></div></div>
+    </div>
+    <div class="fd"><label>N° Factura / Referencia</label><input type="text" id="mRef" placeholder="Opcional"/></div>
+    <div class="fd"><label>Observaciones</label><input type="text" id="mObs" placeholder="Opcional..."/></div>
+    <div class="modal-acts">
+      <button class="btn-mc" onclick="closeModal()">Cancelar</button>
+      <button class="btn-mok" onclick="addMov()">Agregar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal nuevo turno histórico -->
+<div class="modal-bg" id="modalNuevoTurnoHist">
+  <div class="modal">
+    <div style="font-size:16px;font-weight:700;margin-bottom:4px" id="mnthTitulo"></div>
+    <div style="font-size:12px;color:var(--t2);margin-bottom:16px" id="mnthFecha"></div>
+    <div class="fd"><label>Turno</label>
+      <select id="mnthTurno">
+        <option value="1">☀️ Turno 1 — Mañana</option>
+        <option value="2">🌙 Turno 2 — Noche</option>
+      </select>
+    </div>
+    <div class="fd"><label>Saldo inicial</label>
+      <div style="position:relative">
+        <span style="position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--t2);font-size:14px">$</span>
+        <input type="number" id="mnthSaldo" placeholder="0" style="padding-left:22px"/>
+      </div>
+    </div>
+    <div class="modal-acts">
+      <button class="btn-mc" onclick="document.getElementById('modalNuevoTurnoHist').classList.remove('open')">Cancelar</button>
+      <button class="btn-mok" onclick="crearTurnoHistorico()">Crear y cargar →</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal resumen turno cerrado (selector día) -->
+<div class="modal-bg" id="modalTurnoCerrado">
+  <div class="modal">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+      <div id="mtcIcon" class="ti ti1" style="width:44px;height:44px"></div>
+      <div><div id="mtcTitle" style="font-size:16px;font-weight:700"></div><div id="mtcFecha" style="font-size:12px;color:var(--t2);margin-top:1px"></div></div>
+    </div>
+    <div class="arq-box" id="mtcBox" style="margin-bottom:14px"></div>
+    <div id="mtcMovs" style="margin-bottom:14px"></div>
+    <div id="mtcDelWrap" class="hidden">
+      <button onclick="confirmarBorrarTurno()" style="width:100%;padding:11px;background:var(--err-bg);border:1.5px solid var(--err);border-radius:var(--rs);color:var(--err);font-size:13px;font-weight:600;font-family:Inter,sans-serif;cursor:pointer;margin-bottom:8px">🗑 Borrar turno</button>
+    </div>
+    <button class="btn-mc" style="width:100%" onclick="closeMTC()">Cerrar</button>
+  </div>
+</div>
+
+<!-- Modal detalle movimiento -->
+<div class="modal-bg" id="modalMovDet">
+  <div class="modal">
+    <div id="mmdContent"></div>
+    <div class="modal-acts" style="margin-top:16px">
+      <button class="btn-mc" onclick="document.getElementById('modalMovDet').classList.remove('open')">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal turno del mes (ABM arqueo histórico) -->
+<div class="modal-bg" id="modalMesTurno">
+  <div class="modal">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div id="mmtIcon" class="ti ti1" style="width:40px;height:40px"></div>
+        <div><div id="mmtTitle" style="font-size:15px;font-weight:700"></div><div id="mmtFecha" style="font-size:12px;color:var(--t2)"></div></div>
+      </div>
+      <button onclick="closeMesTurno()" style="background:none;border:none;font-size:20px;color:var(--t3);cursor:pointer;line-height:1;padding:4px">×</button>
+    </div>
+    <div id="mmtSinCierre" class="hidden">
+      <div style="text-align:center;padding:20px 0;color:var(--t2)">
+        <div style="font-size:32px;margin-bottom:10px">📋</div>
+        <div style="font-size:14px;font-weight:500;margin-bottom:4px">Sin arqueo registrado</div>
+        <div style="font-size:12px;color:var(--t3);margin-bottom:20px">Los movimientos de caja sí existen para este turno</div>
+        <button onclick="cargarArqueoHistorico()" class="btn-p" style="width:auto;padding:10px 24px">+ Cargar arqueo</button>
+      </div>
+    </div>
+    <div id="mmtConCierre" class="hidden">
+      <div class="arq-box" id="mmtBox" style="margin-bottom:14px"></div>
+      <div id="mmtAuditLog" style="margin-bottom:12px"></div>
+      <div id="mmtMovs" style="margin-bottom:14px"></div>
+      <div style="display:flex;gap:8px">
+        <button onclick="borrarArqueoHistorico()" style="flex:1;padding:11px;background:var(--err-bg);border:1.5px solid var(--err);border-radius:var(--rs);color:var(--err);font-size:13px;font-weight:600;font-family:Inter,sans-serif;cursor:pointer">🗑 Borrar arqueo</button>
+        <button onclick="cargarArqueoHistorico()" style="flex:1;padding:11px;background:var(--pb);border:1.5px solid var(--p);border-radius:var(--rs);color:var(--p);font-size:13px;font-weight:600;font-family:Inter,sans-serif;cursor:pointer">✏️ Reeditar</button>
+      </div>
+    </div>
+    <button class="btn-mc" style="width:100%;margin-top:10px" onclick="closeMesTurno()">Cerrar</button>
+  </div>
+</div>
+
+<!-- Modal alivio de caja -->
+<div class="modal-bg" id="modalAlivio">
+  <div class="modal">
+    <div class="modal-title">📦 Generar alivio de caja</div>
+    <div style="font-size:13px;color:var(--t2);margin-bottom:16px">El efectivo retirado queda registrado con un número de sobre único.</div>
+    <div class="fd"><label>Monto del alivio</label>
+      <div style="position:relative">
+        <span style="position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--t2);font-size:14px">$</span>
+        <input type="number" id="alivioMonto" placeholder="0" style="padding-left:22px;font-size:18px;font-weight:600"/>
+      </div>
+    </div>
+    <div class="fd"><label>Observaciones</label><input type="text" id="alivioObs" placeholder="Opcional..."/></div>
+    <div class="modal-acts">
+      <button class="btn-mc" onclick="closeModalAlivio()">Cancelar</button>
+      <button class="btn-mok" onclick="generarAlivio()">Generar sobre →</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal confirmación sobre -->
+<div class="modal-bg" id="modalSobre">
+  <div class="modal" style="text-align:center">
+    <div style="font-size:40px;margin-bottom:8px">📦</div>
+    <div style="font-size:13px;font-weight:500;color:var(--t2);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">Número de sobre</div>
+    <div id="sobreNumero" style="font-size:28px;font-weight:700;color:var(--pd);letter-spacing:1px;margin-bottom:4px"></div>
+    <div id="sobreMonto" style="font-size:20px;font-weight:600;color:var(--t);margin-bottom:20px"></div>
+    <div style="background:var(--pb);border-radius:var(--rs);padding:10px;font-size:12px;color:var(--pd);margin-bottom:20px">
+      Anotá este número en el sobre físico antes de retirarlo de caja.
+    </div>
+    <button class="btn-p" style="width:100%" onclick="closeSobre()">Listo ✓</button>
+  </div>
+</div>
+
+</body>
+</html>
