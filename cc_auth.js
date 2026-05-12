@@ -60,6 +60,13 @@ async function init() {
 
   if (usr) {
     window.userRol = usr.rol;
+
+    // Owner no usa el formulario — redirigir al dashboard ejecutivo
+    if (window.userRol === 'owner') {
+      window.location.href = 'dashboard.html';
+      return;
+    }
+
     const ul = usr.usuario_local?.[0];
     if (ul?.locales) {
       window.localId     = ul.locales.id;
